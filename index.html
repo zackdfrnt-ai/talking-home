@@ -576,6 +576,7 @@ function go(d){
   let ni=i+d;if(d<0&&S[ni]&&S[ni].t==="wake")ni--;
   if(ni<0||ni>=S.length)return;i=ni;render();
 }
+document.addEventListener("visibilitychange",()=>{if(document.hidden){stopAudio();document.querySelectorAll("video").forEach(v=>v.pause());if(active)active.stop()}});
 $("#next").onclick=()=>go(1);$("#back").onclick=()=>go(-1);
 
 /* ================= SUBMIT ================= */
