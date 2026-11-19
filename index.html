@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0c">
+<title>Living in a Talking Home</title>
+<meta name="description" content="A short research survey by Zack about home appliances that talk like people.">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: a dark house at night, barely visible behind the questions. Black, greys and white; red only as a thin highlight. */
+:root{
+  color-scheme:dark;
+  --bg:#0b0b0c; --panel:#141415; --panel2:#1b1b1d; --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.13);
+  --txt:#ECECEA; --sub:#9a9a9e; --dim:#5e5e63; --red:#E5484D; --warn:#E5484D;
+  --acc:#ECECEA; --hl:#E5484D;
+  --f-q:"Manrope","Inter",system-ui,sans-serif;
+  --f-b:"Inter",system-ui,sans-serif;
+  --f-led:"Inter",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font:16px/1.5 var(--f-b);overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,.field:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+input,textarea,select{font:inherit;color:var(--txt)}
+
+/* ---------- the room ---------- */
+.room{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%}
+.lamp{position:fixed;left:50%;top:-30vh;width:min(1100px,160vw);height:95vh;transform:translateX(-50%);z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 50% 60% at 50% 30%,rgba(255,255,255,.035),transparent 70%)}
+.lamp.on{animation:switchon .9s ease-out}
+@keyframes switchon{0%{opacity:.25}12%{opacity:.9}18%{opacity:.4}30%{opacity:1}100%{opacity:1}}
+
+/* ---------- display bar ---------- */
+.top{position:fixed;top:0;left:0;right:0;z-index:20;padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));
+  display:flex;align-items:center;gap:12px;background:linear-gradient(var(--bg) 55%,transparent)}
+.leds{display:flex;align-items:center;gap:7px}
+.led{width:7px;height:7px;border-radius:50%;background:#2a2a2e;transition:background .4s,box-shadow .4s}
+.led.done{background:#6a6a70}
+.led.now{background:var(--hl);box-shadow:0 0 6px rgba(229,72,77,.6)}
+@keyframes pulse{50%{opacity:.55}}
+.seclbl{font:500 11.5px/1 var(--f-b);letter-spacing:.16em;color:var(--sub);text-transform:uppercase;margin-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.snd{margin-left:auto;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line2);color:var(--sub);flex:none}
+.snd svg{width:15px;height:15px}
+
+main{position:relative;z-index:5;min-height:100%;display:flex;align-items:center;justify-content:center;
+  padding-block:76px 130px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.card{width:100%;max-width:600px;animation:cin .6s cubic-bezier(.2,.8,.2,1) both}
+.card.out{animation:cout .26s ease forwards}
+@keyframes cin{from{opacity:0;transform:translateY(18px)}}
+@keyframes cout{to{opacity:0;transform:translateY(-12px)}}
+
+.kick{font:500 11.5px/1.2 var(--f-b);letter-spacing:.16em;text-transform:uppercase;color:var(--sub);margin-bottom:14px;display:flex;align-items:center;gap:10px;transition:color 1.2s}
+.kick .dotled{width:14px;height:1.5px;background:var(--hl)}
+.hear{margin-left:auto;font:12px var(--f-b);letter-spacing:0;text-transform:none;color:var(--sub);display:flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line2);border-radius:999px}
+.hear svg{width:12px;height:12px}
+h1{font:500 clamp(38px,8.5vw,60px)/1.04 var(--f-q);letter-spacing:-.035em;text-wrap:balance}
+h2{font:500 clamp(24px,4.8vw,32px)/1.22 var(--f-q);letter-spacing:-.025em;text-wrap:balance;margin-bottom:8px}
+h2 q{quotes:"“" "”";color:var(--sub);font-weight:400}
+.opt{font:500 12px var(--f-b);color:var(--dim);border:1px solid var(--line2);border-radius:999px;padding:2px 9px;vertical-align:middle;margin-left:6px;letter-spacing:.02em}
+.help{color:var(--sub);font-size:15px;margin-bottom:22px;max-width:52ch}
+.gap{height:18px}
+.ctx{display:inline-flex;align-items:center;gap:10px;padding:6px 14px 6px 6px;border-radius:12px;background:var(--panel);border:1px solid var(--line);color:var(--sub);font-size:14px;margin-bottom:16px}
+.ctx svg{width:34px;height:34px}
+.ctx b{color:var(--txt);font-weight:500}
+.ctx.txt{padding-left:14px}
+
+/* intro */
+.vid{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line2);margin:24px 0 18px;background:#000;aspect-ratio:16/9;max-width:100%;box-shadow:0 40px 90px -40px rgba(0,0,0,.9)}
+.vid video{width:100%;height:100%;display:block}
+.meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.meta span{font:13px var(--f-b);color:var(--sub);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+
+/* inputs */
+.field{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 16px;font-size:17px;outline:none;transition:border-color .2s}
+.field:focus{border-color:rgba(255,255,255,.35)}
+textarea.field{min-height:112px;resize:vertical}
+.field::placeholder{color:var(--dim)}
+
+/* appliance-style buttons with a status LED */
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{padding:12px 16px 12px 14px;border-radius:12px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 2px 0 rgba(0,0,0,.4);font-size:15.5px;display:flex;align-items:center;gap:10px;transition:border-color .2s,transform .12s}
+.chip:active{transform:translateY(1px)}
+.chip .l{width:7px;height:7px;border-radius:50%;background:#2c2c31;flex:none;transition:.25s}
+.chip.on{border-color:rgba(255,255,255,.45);color:#fff}
+.chip.on .l{background:var(--hl);box-shadow:0 0 6px rgba(229,72,77,.7)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px}
+.tile{padding:14px 6px 12px;border-radius:14px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+  display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13.5px;transition:border-color .25s;position:relative;min-width:0}
+.tile svg{width:58px;height:58px;transition:transform .35s cubic-bezier(.3,1.6,.5,1)}
+.tile .l{position:absolute;top:9px;right:9px;width:6px;height:6px;border-radius:50%;background:#2c2c31;transition:.25s}
+.tile.on{border-color:rgba(255,255,255,.45)}
+.tile.on svg{transform:scale(1.08)}
+.tile.on .l{background:var(--hl);box-shadow:0 0 6px rgba(229,72,77,.7)}
+.scale{display:flex;gap:8px;max-width:400px}
+.scale button{flex:1;aspect-ratio:1;border-radius:12px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);font:500 22px var(--f-q);transition:.2s}
+.scale button.on{background:var(--acc);color:#0b0b0c;border-color:var(--acc)}
+.scale-l{display:flex;justify-content:space-between;color:var(--dim);font-size:13px;margin-top:8px;max-width:400px}
+
+.consent{list-style:none;display:flex;flex-direction:column;gap:12px;color:var(--sub);font-size:15px;margin:6px 0 20px}
+.consent li{display:flex;gap:12px}
+.consent li:before{content:"";flex:none;width:10px;height:1.5px;background:var(--dim);margin-top:12px}
+.agree{display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:var(--panel);width:100%;text-align:left}
+.agree .box{width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid var(--dim);display:grid;place-items:center;transition:.2s}
+.agree.on{border-color:rgba(255,255,255,.4)}
+.agree.on .box{background:var(--acc);border-color:var(--acc)}
+.agree.on .box:after{content:"";width:10px;height:6px;border:2px solid #0a0a0b;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+
+/* voice */
+.voice{display:flex;flex-direction:column;gap:12px}
+.vrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.mic{display:flex;align-items:center;gap:12px;padding:8px 18px 8px 8px;border-radius:999px;background:var(--panel);border:1px solid var(--line2)}
+.mic .dot{width:42px;height:42px;border-radius:50%;background:var(--acc);display:grid;place-items:center;color:#0a0a0b;position:relative;}
+.mic .dot svg{width:18px;height:18px}
+.mic.rec{border-color:var(--red)}
+.mic.rec .dot{background:var(--red);color:#fff;box-shadow:0 0 18px -4px var(--red)}
+.mic.rec .dot:before,.mic.rec .dot:after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--red);animation:ring 1.6s ease-out infinite}
+.mic.rec .dot:after{animation-delay:.8s}
+@keyframes ring{to{transform:scale(1.9);opacity:0}}
+.wave{width:110px;height:30px}
+.vtime{font:14px var(--f-b);font-variant-numeric:tabular-nums;color:var(--red);min-width:70px;letter-spacing:.06em}
+.clip{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;border-radius:999px;background:var(--panel);border:1px solid var(--line2)}
+.clip .play{width:32px;height:32px;border-radius:50%;background:var(--acc);color:#0a0a0b;display:grid;place-items:center}
+.clip .play svg{width:13px;height:13px}
+.clip .lbl{font-size:14px}
+.mini{font-size:13px;color:var(--sub);padding:6px 12px;border-radius:999px;border:1px solid var(--line2)}
+.lang{font-size:13px;color:var(--dim);display:flex;align-items:center;gap:6px}
+.lang select{background:transparent;color:var(--sub);border:0;border-bottom:1px dashed var(--dim);padding:1px 2px;outline:none}
+.lang select option{background:var(--panel2)}
+.or{font:500 11px var(--f-b);color:var(--dim);letter-spacing:.16em;text-transform:uppercase}
+.field.live{border-color:color-mix(in srgb,var(--red) 50%,transparent)}
+
+/* nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:15;display:flex;justify-content:center;
+  padding:14px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  background:linear-gradient(transparent,var(--bg) 45%)}
+.nav-in{width:100%;max-width:600px;display:flex;align-items:center;gap:12px}
+.back{width:48px;height:48px;border-radius:50%;border:1px solid var(--line2);display:grid;place-items:center;color:var(--sub);background:var(--bg)}
+.back svg{width:18px;height:18px}
+.next{margin-left:auto;padding:14px 26px;border-radius:999px;background:var(--acc);color:#0a0a0b;font-weight:600;display:flex;align-items:center;gap:10px;
+  transition:transform .12s}
+.next:active{transform:scale(.97)}
+.next.intro{background:#5EE0C8;color:#070709;font-weight:700}
+.next svg{width:16px;height:16px}
+.next.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+.nudge{font-size:13px;color:var(--warn);opacity:0;transition:opacity .3s;margin-left:auto;text-align:right}
+.nudge.show{opacity:1}
+.hidden{display:none!important}
+
+/* ---------- appliance characters ---------- */
+.ap .eyes{transform-box:fill-box;transform-origin:center;animation:blink 4.6s infinite}
+.ap.asleep .eyes{animation:none;transform:scaleY(.14)}
+.ap .mouth{transform-box:fill-box;transform-origin:center;transition:transform .07s linear}
+.ap.talk .mouth{animation:yap .2s ease-in-out infinite alternate}
+.ap.asleep .mouth{transform:scaleX(.6)}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes yap{to{transform:scaleY(2.4) scaleX(.85)}}
+.ap .spin{transform-box:fill-box;transform-origin:center;animation:spin 2.4s linear infinite}
+.ap.asleep .spin{animation-duration:14s}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ap .bob{animation:bob 3.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-4px)}}
+.ap .glow{animation:glow 3s ease-in-out infinite}
+@keyframes glow{50%{opacity:.35}}
+.ap.asleep .glow{opacity:.08;animation:none}
+
+.stagebot{display:flex;flex-direction:column;align-items:center;margin:0 0 18px;position:relative}
+.stagebot svg{width:150px;height:150px;filter:drop-shadow(0 18px 30px rgba(0,0,0,.7))}
+.stagebot .zz{position:absolute;top:6px;left:calc(50% + 46px);color:var(--sub);font:italic 18px var(--f-q);animation:zz 2.6s ease-in-out infinite}
+@keyframes zz{0%{opacity:0;transform:translate(0,8px)}40%{opacity:1}100%{opacity:0;transform:translate(14px,-18px)}}
+.halo{position:absolute;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.07),transparent 65%);top:75px;left:50%;transform:translate(-50%,-50%)}
+.botid{font:500 11.5px var(--f-b);letter-spacing:.16em;text-transform:uppercase;color:var(--sub);margin-top:4px}
+
+.wakecard .stagebot{position:sticky;top:calc(54px + env(safe-area-inset-top,0px));z-index:3;padding:6px 0 18px;background:linear-gradient(var(--bg) 82%,transparent)}
+.wakecard .stagebot svg{width:118px;height:118px}
+.wakecard .halo{top:65px}
+.chat{display:flex;flex-direction:column;gap:10px;min-height:120px;margin-bottom:16px}
+.msg{scroll-margin-bottom:140px;max-width:86%;padding:12px 16px;border-radius:16px;font-size:16px;animation:pop .4s cubic-bezier(.3,1.5,.5,1) both}
+.msg.bot{background:var(--panel2);border:1px solid var(--line);border-bottom-left-radius:5px;align-self:flex-start}
+.msg.me{background:var(--acc);color:#0a0a0b;border-bottom-right-radius:5px;align-self:flex-end;font-weight:500}
+.msg .who{display:block;font:500 11px var(--f-b);letter-spacing:.14em;text-transform:uppercase;color:var(--sub);margin-bottom:3px}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.94)}}
+.typing{display:flex;gap:4px;padding:14px 16px;background:var(--panel2);border-radius:16px;border-bottom-left-radius:5px;align-self:flex-start;border:1px solid var(--line)}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--sub);animation:td 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes td{50%{transform:translateY(-4px);opacity:.4}}
+.replies{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.replies .chip{animation:pop .35s both}
+.burst{position:absolute;left:0;right:0;top:0;height:150px;width:100%;pointer-events:none}
+
+/* docked companion */
+.dock{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:calc(88px + env(safe-area-inset-bottom,0px));z-index:14;display:flex;align-items:flex-end;gap:6px;pointer-events:none;transition:opacity .4s,transform .5s cubic-bezier(.3,1.4,.5,1)}
+.dock.off{opacity:0;transform:translateY(30px) scale(.6)}
+.dock #dockbot{width:72px;height:72px;flex:none;pointer-events:auto;cursor:pointer}
+.dock #dockbot svg{width:72px;height:72px;filter:drop-shadow(0 8px 16px rgba(0,0,0,.8))}
+.dock .say{max-width:200px;background:var(--panel2);border:1px solid var(--line2);padding:9px 13px;border-radius:12px;border-bottom-right-radius:4px;font-size:13.5px;opacity:0;transform:translateY(6px);transition:.35s;margin-bottom:30px}
+.dock .say.show{opacity:1;transform:none}
+.dock .say b{display:block;font:500 10.5px var(--f-b);letter-spacing:.14em;text-transform:uppercase;color:var(--sub)}
+
+.thanks{text-align:center;display:flex;flex-direction:column;align-items:center}
+.thanks .stagebot svg{width:170px;height:170px}
+.sig{font:500 20px var(--f-q);color:var(--txt);border-top:1.5px solid var(--hl);padding-top:10px;margin-top:14px}
+.sending{display:flex;justify-content:center;gap:6px;margin:24px 0}
+.sending i{width:9px;height:9px;border-radius:50%;background:var(--acc);animation:td 1s infinite}
+.sending i:nth-child(2){animation-delay:.15s}.sending i:nth-child(3){animation-delay:.3s}
+
+@media (max-width:520px){
+  main{align-items:flex-start}
+  .grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .tile svg{width:50px;height:50px}
+  .tile{font-size:12.5px}
+  .dock #dockbot,.dock #dockbot svg{width:58px;height:58px}
+  .dock .say{max-width:165px;font-size:12.5px}
+  .seclbl{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+</style>
+
+</head>
+<body>
+<div class="lamp" id="lamp"></div>
+<svg class="room" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+  <g fill="none" stroke="#18181b" stroke-width="2">
+    <path d="M0 790H1600"/>
+    <rect x="1130" y="170" width="300" height="400" rx="4" fill="#0e0e10"/><path d="M1280 170v400M1130 370h300"/>
+    <path d="M1110 160h340M1110 160v-22M1450 160v-22"/>
+    <path d="M90 790V170h190v620"/><circle cx="255" cy="490" r="6" fill="#18181b"/>
+    <path d="M760 0v170"/><path d="M700 230q60-70 120 0z" fill="#101012"/>
+    <rect x="420" y="250" width="180" height="130" rx="3"/><rect x="436" y="266" width="148" height="98" rx="2" stroke="#141416"/>
+    <path d="M380 790V660q0-30 30-30h470q30 0 30 30v130M380 700h530M420 790v24M870 790v24" fill="#0d0d0f"/>
+    <path d="M440 660q0-46 46-46h130q46 0 46 46" /><path d="M640 660q0-46 46-46h130q46 0 46 46"/>
+    <path d="M1490 790v-70h60v70M1520 720c-40-60-30-130 0-170c30 40 40 110 0 170z" fill="#0d0d0f"/>
+    <path d="M980 790V420h120v370M980 560h120M1084 450v40M1084 590v60" fill="#0d0d0f"/>
+  </g>
+</svg>
+
+
+<div class="top">
+  <div class="leds" id="leds"></div>
+  <div class="seclbl" id="sec"></div>
+  <button class="snd" id="snd" aria-label="Sound on or off"></button>
+</div>
+
+<main id="main"></main>
+
+<div class="dock off" id="dock"><div class="say" id="say"></div><div id="dockbot"></div></div>
+
+<nav class="nav" id="nav">
+  <div class="nav-in">
+    <button class="back" id="back" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <span class="nudge" id="nudge"></span>
+    <button class="next" id="next"><span id="nextl">Next</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+  </div>
+</nav>
+
+<script>
+/* ================= CONFIG ================= */
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbxSyxpRnUZf4aRM9BGtVGbuH5S-troN6mtSkwjRidCLijObAGMkbtCYHbdt1YAKBAlg-w/exec";            // Google Apps Script URL, set once storage is ready
+const MAX_REC = 90;             // seconds per recording
+const QV = new Set(["consent","name","age","city","live_with","assistant","contact","use_most","talker","talker_why","bot_name","personality","first_ask","want_do","fridge_feel","ac_control","too_many","attached","miss","lonely","friend_call","friend_why","switch_off","final_voice"]); // voice/q_<id>.mp3
+
+/* ================= APPLIANCES ================= */
+const G="#a3a3a8";const C={teal:G,blue:G,amb:G,pink:G};
+const APPL={
+  fridge:{label:"Fridge",noun:"fridge",c:C.teal}, ac:{label:"AC",noun:"AC",c:C.blue}, fan:{label:"Fan",noun:"fan",c:C.teal},
+  washer:{label:"Washing machine",noun:"washing machine",c:C.pink}, tv:{label:"TV",noun:"TV",c:C.blue}, lights:{label:"Lights",noun:"light",c:C.amb},
+  microwave:{label:"Microwave / Oven",noun:"microwave",c:C.amb}, mixer:{label:"Mixer-grinder",noun:"mixer-grinder",c:C.pink},
+  purifier:{label:"Water purifier",noun:"water purifier",c:C.blue}, other:{label:"Other",noun:"appliance",c:C.teal}
+};
+const BODY="#1d1d20",BODY2="#28282c",EYE="#F3F0EA";
+function face(cx,cy,s=1){const ew=9*s,eh=13*s,g=14*s;
+  return `<g class="eyes"><rect x="${cx-g-ew/2}" y="${cy-eh/2}" width="${ew}" height="${eh}" rx="${ew/2}" fill="${EYE}"/><rect x="${cx+g-ew/2}" y="${cy-eh/2}" width="${ew}" height="${eh}" rx="${ew/2}" fill="${EYE}"/></g><path class="mouth" d="M${cx-8*s} ${cy+15*s} Q${cx} ${cy+22*s} ${cx+8*s} ${cy+15*s}" stroke="${EYE}" stroke-width="${3.2*s}" fill="none" stroke-linecap="round"/>`}
+function appSVG(k,asleep=false,live=false){
+  const c=(APPL[k]||APPL.other).c;let g="";
+  switch(k){
+  case "fridge":g=`<g class="bob"><rect x="58" y="16" width="84" height="170" rx="16" fill="${BODY}" stroke="${c}" stroke-width="3"/><line x1="58" y1="74" x2="142" y2="74" stroke="${c}" stroke-width="3" opacity=".7"/><rect x="124" y="32" width="6" height="28" rx="3" fill="${c}"/><rect x="124" y="88" width="6" height="40" rx="3" fill="${c}"/>${face(96,118,1.15)}</g>`;break;
+  case "ac":g=`<g class="bob"><rect x="16" y="54" width="168" height="70" rx="16" fill="${BODY}" stroke="${c}" stroke-width="3"/><path d="M30 110h140" stroke="${c}" stroke-width="3" opacity=".6"/><circle cx="166" cy="70" r="4" fill="${c}" class="glow"/>${face(100,80,1)}</g><g stroke="${c}" stroke-width="3" fill="none" stroke-linecap="round" opacity=".55" class="glow"><path d="M60 140q6 10 0 20"/><path d="M100 140q6 10 0 20"/><path d="M140 140q6 10 0 20"/></g>`;break;
+  case "fan":g=`<rect x="94" y="120" width="12" height="56" rx="6" fill="${BODY2}"/><ellipse cx="100" cy="180" rx="40" ry="9" fill="${BODY2}"/><circle cx="100" cy="82" r="62" fill="none" stroke="${c}" stroke-width="3" opacity=".5"/><g class="spin"><g fill="${c}" opacity=".35"><ellipse cx="100" cy="46" rx="16" ry="32"/><ellipse cx="100" cy="46" rx="16" ry="32" transform="rotate(120 100 82)"/><ellipse cx="100" cy="46" rx="16" ry="32" transform="rotate(240 100 82)"/></g></g><circle cx="100" cy="82" r="30" fill="${BODY}" stroke="${c}" stroke-width="3"/>${face(100,76,.75)}`;break;
+  case "washer":g=`<g class="bob"><rect x="40" y="22" width="120" height="158" rx="16" fill="${BODY}" stroke="${c}" stroke-width="3"/><line x1="40" y1="52" x2="160" y2="52" stroke="${c}" stroke-width="3" opacity=".6"/><circle cx="62" cy="37" r="5" fill="${c}" class="glow"/><rect x="104" y="33" width="40" height="8" rx="4" fill="${BODY2}"/><circle cx="100" cy="115" r="46" fill="${BODY2}" stroke="${c}" stroke-width="4"/><g class="spin"><path d="M66 136q17-10 34 0t34 0" stroke="${c}" stroke-width="3" fill="none" opacity=".3"/></g>${face(100,106,1)}</g>`;break;
+  case "tv":g=`<g class="bob"><rect x="20" y="34" width="160" height="104" rx="14" fill="${BODY}" stroke="${c}" stroke-width="3"/><rect x="30" y="44" width="140" height="84" rx="8" fill="${c}" opacity=".08" class="glow"/>${face(100,80,1.1)}</g><path d="M80 170l20-30 20 30" stroke="${BODY2}" stroke-width="8" fill="none" stroke-linecap="round"/>`;break;
+  case "lights":g=`<circle cx="100" cy="82" r="78" fill="${c}" opacity=".18" class="glow"/><g class="bob"><circle cx="100" cy="82" r="54" fill="${BODY}" stroke="${c}" stroke-width="3"/><rect x="78" y="134" width="44" height="14" rx="4" fill="${BODY2}"/><rect x="82" y="150" width="36" height="12" rx="4" fill="${BODY2}"/><rect x="88" y="164" width="24" height="10" rx="5" fill="${c}" opacity=".6"/>${face(100,78,1.1)}</g>`;break;
+  case "microwave":g=`<g class="bob"><rect x="18" y="50" width="164" height="104" rx="14" fill="${BODY}" stroke="${c}" stroke-width="3"/><rect x="30" y="62" width="104" height="80" rx="9" fill="${BODY2}" stroke="${c}" stroke-width="2"/><rect x="30" y="62" width="104" height="80" rx="9" fill="${c}" opacity=".07" class="glow"/><circle cx="158" cy="76" r="7" fill="${c}"/><rect x="150" y="94" width="16" height="5" rx="2.5" fill="${c}" opacity=".6"/><rect x="150" y="106" width="16" height="5" rx="2.5" fill="${c}" opacity=".6"/>${face(82,94,1)}</g>`;break;
+  case "mixer":g=`<g class="bob"><path d="M66 30h68l-10 92H76z" fill="${BODY2}" stroke="${c}" stroke-width="3" stroke-linejoin="round"/><rect x="60" y="20" width="80" height="14" rx="6" fill="${BODY}" stroke="${c}" stroke-width="3"/>${face(100,70,.95)}<rect x="52" y="126" width="96" height="52" rx="14" fill="${BODY}" stroke="${c}" stroke-width="3"/><circle cx="100" cy="152" r="9" fill="${c}" class="glow"/></g>`;break;
+  case "purifier":g=`<g class="bob"><rect x="60" y="14" width="80" height="160" rx="18" fill="${BODY}" stroke="${c}" stroke-width="3"/><rect x="72" y="104" width="56" height="44" rx="8" fill="${c}" opacity=".12"/><path d="M128 118h18v10" stroke="${c}" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M146 136q-5 8 0 12q5-4 0-12z" fill="${c}" class="glow"/>${face(100,58,1)}</g>`;break;
+  default:g=`<circle cx="100" cy="96" r="80" fill="${c}" opacity=".14" class="glow"/><g class="bob"><circle cx="100" cy="96" r="56" fill="${BODY}" stroke="${c}" stroke-width="3"/>${face(100,90,1.1)}</g>`;
+  }
+  return `<svg class="ap${asleep?" asleep":""}${live?" live":""}" viewBox="0 0 200 200" aria-hidden="true">${g}</svg>`;
+}
+
+/* ================= THE APPLIANCE'S LINES (text matches bot/<key>.mp3 exactly) ================= */
+const PERS={calm:"Calm and caring",funny:"Funny and playful",friend:"Like a best friend",formal:"Respectful and formal",elder:"Like a wise elder",strict:"Strict and efficient"};
+const GREET={calm:"Hi there. I'm awake now. It's really nice to finally meet you.",funny:"Ta-da! Surprise! I can talk now. Did I scare you? Just a little?",friend:"Heyyy! Finally, we can actually chat! I've been waiting for this forever.",formal:"Good day. It is a pleasure to finally speak with you. I am at your service.",elder:"Ah, there you are. Come, sit with me for a moment.",strict:"Hello. I'm online. Let's keep this quick and useful."};
+const ACK={calm:"Of course.",funny:"Consider it done, boss!",friend:"Got you!",formal:"Certainly.",elder:"Very well, my dear.",strict:"Done."};
+const TASK={
+ fridge:["Your milk is almost finished. Shall I add it to your shopping list?",[["Yes, please","Added. I'll remind you when you pass the shop."],["Not now","Okay. I'll keep it cold till then."],["I'll check myself","Fair enough. I'll keep the light on for you."]]],
+ ac:["It's warm today. Shall I set it to 24 degrees for you?",[["24 is perfect","24 degrees. Cooling you down now."],["Cooler, 22","22 it is. Grab a blanket later."],["Just the fan mode","Fan mode. Saving energy, nice."]]],
+ fan:["Speed three, or shall I keep it a soft breeze?",[["Speed three","Full power. Hold on to your papers!"],["Soft breeze","A soft breeze, just for you."],["Turn off","Okay. I'll rest too."]]],
+ washer:["Shall I do a gentle wash or a quick one today?",[["Gentle wash","Gentle wash. Forty minutes, cold water."],["Quick, 30 minutes","Quick wash. Done in thirty minutes."],["Heavy load","Heavy load. I'll take my time."]]],
+ tv:["Shall I continue your show from last night?",[["Yes, continue","Resuming from where you fell asleep."],["Something new","Let me find you something new."],["No TV today","A screen-free day. I respect that."]]],
+ lights:["Shall I make it warm and dim for the evening?",[["Warm and dim","Warm and dim. Cosy mode on."],["Keep it bright","Bright it is. Let's get things done."],["Surprise me","A little sunset colour, just for you."]]],
+ microwave:["Reheating something? Two minutes should be just right.",[["Two minutes","Two minutes. I'll beep softly."],["Just one minute","One minute. Careful, it's hot."],["Just checking","I'm here whenever you're hungry."]]],
+ mixer:["Chutney or juice today? I'm ready to spin.",[["Chutney","Chutney time. I'll be loud for a bit, sorry!"],["Juice","Fresh juice, coming right up."],["Nothing now","Okay. I'll stay quiet."]]],
+ purifier:["You've had only two glasses of water today. One more?",[["Sure","Good choice. Fresh and cool."],["Later","Okay. I'll remind you in an hour."],["Stop counting!","Fine, fine. I'll count silently."]]],
+ other:["So, what shall we do together today?",[["Just talk","I'd love that."],["Help me with something","Always. That's what I'm here for."],["Just saying hi","Hi back! That made my day."]]]};
+const FEEL=["Can I ask you something? How does it feel, hearing me talk?",[["I like it","That makes me happy. I'll try to be good company."],["It's strange","Strange is fair. I'm new at this too."],["A bit creepy","Thank you for being honest. I'll stay quiet whenever you want."]]];
+const CLOSE={calm:"I'll stay right here while you finish. Take your time.",funny:"I'll be in the corner, being adorable. Carry on!",friend:"I'll hang out down here. Let's finish this together!",formal:"I shall wait in the corner. Please continue.",elder:"Go on, finish. I'll be right here, watching over you.",strict:"I'll wait in the corner. Continue."};
+const DOCK={first_ask:"Go on, ask me anything. I'm listening.",want_do:"Be honest. I can take it.",fridge_feel:"Between us, the fridge really does say that.",ac_control:"Hmm. This one is about trust, isn't it?",too_many:"Too many of us? I won't be offended. Probably.",attached:"No pressure. I'll just blink quietly here.",miss:"Would you miss me? Use the scale.",lonely:"This one matters a lot to me.",friend_call:"Your friends are important. Even I know that.",switch_off:"Ouch. But I really want to know.",final_voice:"My favourite part. I get to hear your voice!"};
+const BYE="Thank you so much. Bye for now!";
+const TAPS=["I'm right here. Just relax and take your time.","You're doing awesome. Really.","No wrong answers here, I promise.","Take a breath. You've got this.","I like how honest you are.","Almost there. I'm proud of you.","Still here. Still blinking.","Okay, okay. I'll let you focus now."];
+let TAPN=0;
+
+/* ================= QUESTIONS (text matches Zack's recording script) ================= */
+const SECS=["Welcome","About you","Your home","Imagine it talks","Living with it","Your voice"];
+const S=[
+ {id:"intro",t:"intro",sec:0},
+ {id:"consent",t:"consent",sec:0,req:1},
+ {id:"name",t:"text",sec:1,q:"First, what's your name?",ph:"Your name",req:1},
+ {id:"age",t:"choice",sec:1,q:"What's your age range?",opts:["18–24","25–34","35–44","45–54","55+"],req:1},
+ {id:"city",t:"text",sec:1,q:"Which city and country do you live in?",ph:"e.g. Hyderabad, India",req:1},
+ {id:"live_with",t:"choice",sec:1,q:"Who do you live with?",opts:["Alone","With family","With partner","With roommates","Other"],req:1},
+ {id:"assistant",t:"choice",sec:1,q:"How often do you talk to voice assistants like Alexa, Siri, Google Assistant or ChatGPT?",opts:["Never","Sometimes","Daily"],req:1},
+ {id:"contact",t:"text",sec:1,q:"If you're happy to have a short follow-up chat, share your phone number or email.",opt:1,help:"It stays private.",ph:"Phone or email"},
+ {id:"use_most",t:"multi",sec:2,q:"Which appliances do you use the most?",help:"Pick as many as you like.",req:1},
+ {id:"talker",t:"pick",sec:2,q:"If just one of them could start talking tomorrow, which should it be?",req:1},
+ {id:"talker_why",t:"voice",sec:2,q:"Why did you choose that appliance?",ctx:"talker",req:1},
+ {id:"bot_name",t:"botname",sec:3,q:"It's sleeping right now. What name would you give it?",ph:"e.g. Kiri",req:1},
+ {id:"personality",t:"persona",sec:3,q:"What personality should it have?",req:1},
+ {id:"wake",t:"wake",sec:3},
+ {id:"first_ask",t:"voice",sec:3,q:"If it could talk, what's the first thing you would ask it?",req:1},
+ {id:"want_do",t:"voice",sec:3,q:"What would you most want it to do for you?",req:1},
+ {id:"fridge_feel",t:"choice",sec:4,q:"You come home after a long day, and your fridge says: <q>You seem tired today. Want me to suggest something light to eat?</q> How do you feel?",opts:["Comforted","Amused","Curious","Uncomfortable","Creeped out"],req:1},
+ {id:"ac_control",t:"choice",sec:4,q:"Your AC changes the temperature on its own because <q>you looked cold</q>. What would you want it to do?",opts:["Always ask me first","Ask only for big things","Just do it"],req:1},
+ {id:"too_many",t:"choice",sec:4,q:"How many talking appliances in one home is too many?",opts:["1 is enough","2–3","4 or more","No limit"],req:1},
+ {id:"attached",t:"choice",sec:4,q:"Could you get emotionally attached to a talking appliance?",opts:["Yes","Maybe","No"],req:1},
+ {id:"miss",t:"scale",sec:4,q:"If your talking appliance broke and had to be replaced, would you miss its personality?",req:1},
+ {id:"lonely",t:"choice",sec:4,q:"If you lived alone, how would talking appliances make you feel?",opts:["Much less lonely","A bit less lonely","No difference","More lonely"],req:1},
+ {id:"friend_call",t:"choice",sec:4,q:"Can you imagine a day when you'd rather talk to your appliances than call a friend?",opts:["Yes","Maybe","Never"],req:1},
+ {id:"friend_why",t:"voice",sec:4,q:"Why do you feel that way?",ctx:"friend_call",opt:1},
+ {id:"switch_off",t:"voice",sec:4,q:"What would make you switch them all off for good?",req:1},
+ {id:"final_voice",t:"voice",sec:5,q:"Last one, in your own voice. How would you feel living alone in a home where everything talks to you?",help:"Even 30 seconds is perfect. You can listen back and re-record.",opt:1,voiceFirst:1},
+ {id:"done",t:"done",sec:5}
+];
+
+/* ================= STATE ================= */
+const A={},AUD={},CHAT=[];
+let i=0,sound=true,lang="en-IN",startedAt=Date.now(),woke=false;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const botKey=()=>A.talker||"other";
+const botName=()=>(A.bot_name||"").trim()||"Your appliance";
+const noun=()=>botKey()==="other"?((A.talker_other||"").trim()||"appliance"):APPL[botKey()].noun;
+const setAcc=c=>document.documentElement.style.setProperty("--acc",c);
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ================= AUDIO: one shared player, unlocked on first tap ================= */
+const PL=new Audio(); PL.preload="auto";
+let actx=null,an=null,lipRAF=0,botTalking=false;
+function unlockAudio(){
+  if(actx)return;
+  try{PL.src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRBqpAAAAAAD/+xDEAAPAAAGkAAAAIAAANIAAAARMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7EMQpg8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==";PL.play().catch(()=>{})}catch(e){}
+  try{actx=new (window.AudioContext||window.webkitAudioContext)();const src=actx.createMediaElementSource(PL);an=actx.createAnalyser();an.fftSize=512;src.connect(an);an.connect(actx.destination)}catch(e){an=null}
+}
+function lipSync(){
+  const mouths=document.querySelectorAll(".ap.live .mouth");
+  if(!botTalking){mouths.forEach(m=>m.style.transform="");document.querySelectorAll(".ap.live").forEach(s=>s.classList.remove("talk"));return}
+  if(an){const b=new Uint8Array(an.fftSize);an.getByteTimeDomainData(b);let s=0;for(const v of b){const d=(v-128)/128;s+=d*d}const r=Math.min(1,Math.sqrt(s/b.length)*5);
+    mouths.forEach(m=>m.style.transform=`scaleY(${1+r*2.2}) scaleX(${1-r*.25})`)}
+  else document.querySelectorAll(".ap.live").forEach(s=>s.classList.add("talk"));
+  lipRAF=requestAnimationFrame(lipSync);
+}
+function stopAudio(){PL._tok=(PL._tok||0)+1;PL._stopped=PL._tok;PL.pause();botTalking=false;cancelAnimationFrame(lipRAF);lipSync();if(PL._res){PL._res();PL._res=null}}
+function playClip(url,isBot){
+  return new Promise(res=>{
+    if(!sound){res();return}
+    stopAudio(); PL._res=res;
+    const fin=()=>{if(PL._res===res){PL._res=null;botTalking=false;cancelAnimationFrame(lipRAF);lipSync();res()}};
+    PL.onended=fin; PL.onerror=fin; PL.src=url; PL._stopped=-1;
+    if(actx&&actx.state==="suspended")actx.resume();
+    PL.play().then(()=>{if(isBot){botTalking=true;lipSync()}}).catch(fin);
+  });
+}
+const botClip=k=>playClip(`bot/${k}.mp3`,true);
+const QSEQ={fridge_feel:[["voice/q_fridge_feel_a.mp3",0],["bot/quote_fridge.mp3",0],["voice/q_fridge_feel_b.mp3",0]]};
+async function readQuestion(st){const seq=QSEQ[st.id]||[[`voice/q_${st.id}.mp3`,0]];for(const [u,b] of seq){if(S[i]!==st)return;await playClip(u,b);const tk=PL._tok;if(!sound||PL._stopped===tk)return}}
+function playQuestion(st){if(QV.has(st.id))setTimeout(()=>{if(S[i]===st)readQuestion(st)},300)}
+const PRE={};function preload(k){for(const s2 of S.slice(k,k+3)){if(!QV.has(s2.id))continue;const seq=QSEQ[s2.id]||[[`voice/q_${s2.id}.mp3`,0]];for(const [u] of seq){if(PRE[u])continue;const a=new Audio();a.preload="auto";a.src=u;PRE[u]=a}}}
+function sndIcon(){$("#snd").innerHTML=sound?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 010 6M18.5 6.5a8 8 0 010 11"/></svg>`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>`}
+$("#snd").onclick=()=>{sound=!sound;sndIcon();if(!sound)stopAudio()};sndIcon();
+
+/* ================= RECORDER: voice + live transcript ================= */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let active=null;
+const fmt=t=>{t=Math.floor(t);return Math.floor(t/60)+":"+String(t%60).padStart(2,"0")};
+const MIC=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>`;
+const STOP=`<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>`;
+const PLAY=`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>`;
+const PAUSE=`<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`;
+function voiceBlock(st){
+  return `<div class="voice" data-q="${st.id}">
+    <div class="vrow"><button class="mic" id="mic_${st.id}"><span class="dot">${MIC}</span><span class="ml">${st.voiceFirst?"Tap to record":"Tap to speak"}</span></button>
+      <canvas class="wave hidden" width="220" height="60"></canvas><span class="vtime hidden">0:00</span><span class="clipwrap"></span></div>
+    <div class="lang">Speaking in <select class="lsel" id="lang_${st.id}">${[["en-IN","English"],["ta-IN","Tamil"],["hi-IN","Hindi"],["te-IN","Telugu"],["en-AU","English (Australia)"]].map(([v,l])=>`<option value="${v}"${v===lang?" selected":""}>${l}</option>`).join("")}</select></div>
+    <div class="or">${st.voiceFirst?"Your words appear here as you speak. Or type.":"Or type"}</div>
+    <textarea class="field" id="ta_${st.id}" placeholder="Type here, or tap the mic and just talk…">${esc(A[st.id]||"")}</textarea></div>`;
+}
+function mountVoice(root){
+  const box=root.querySelector(".voice");if(!box)return;const id=box.dataset.q;
+  const ta=box.querySelector("textarea"),mic=box.querySelector(".mic"),ml=box.querySelector(".ml"),wave=box.querySelector(".wave"),tm=box.querySelector(".vtime"),cw=box.querySelector(".clipwrap"),ls=box.querySelector(".lsel");
+  ta.oninput=()=>{A[id]=ta.value};ls.onchange=()=>{lang=ls.value};
+  const drawClip=()=>{
+    if(!AUD[id]){cw.innerHTML="";return}
+    cw.innerHTML=`<span class="clip"><button class="play" aria-label="Play your recording">${PLAY}</button><span class="lbl">Your voice · ${fmt(AUD[id].dur)}</span></span> <button class="mini" data-act="del">Delete</button>`;
+    let au=null;const pb=cw.querySelector(".play");
+    pb.onclick=()=>{stopAudio();if(au&&!au.paused){au.pause();pb.innerHTML=PLAY;return}au=new Audio(AUD[id].url);au.onended=()=>pb.innerHTML=PLAY;au.play();pb.innerHTML=PAUSE};
+    cw.querySelector('[data-act="del"]').onclick=()=>{URL.revokeObjectURL(AUD[id].url);delete AUD[id];drawClip();ml.textContent="Tap to speak"};
+    ml.textContent="Re-record";
+  };
+  drawClip();
+  mic.onclick=async()=>{
+    if(active&&active.id===id){active.stop();return}
+    if(active)active.stop(); stopAudio();
+    if(!navigator.mediaDevices||!window.MediaRecorder){nudge("Recording isn't supported here. Please type instead.");return}
+    let stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}catch(e){nudge("Mic access was blocked. You can type instead.");return}
+    const chunks=[];const mime=["audio/webm;codecs=opus","audio/mp4","audio/webm"].find(m=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))||"";
+    const mr=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+    const base=ta.value?ta.value.replace(/\s*$/," "):"";let finalTxt="",rec=null;
+    if(SR){try{rec=new SR();rec.lang=lang;rec.continuous=true;rec.interimResults=true;
+      rec.onresult=ev=>{let interim="";for(let k=ev.resultIndex;k<ev.results.length;k++){const r=ev.results[k];if(r.isFinal)finalTxt+=r[0].transcript+" ";else interim+=r[0].transcript}ta.value=(base+finalTxt+interim).trimStart();A[id]=ta.value};
+      rec.onerror=()=>{};rec.onend=()=>{if(active&&active.id===id&&active.running){try{rec.start()}catch(e){}}};rec.start()}catch(e){rec=null}}
+    const ac=new (window.AudioContext||window.webkitAudioContext)();const wan=ac.createAnalyser();wan.fftSize=64;ac.createMediaStreamSource(stream).connect(wan);
+    const buf=new Uint8Array(wan.frequencyBinCount);const ctx=wave.getContext("2d");const t0=Date.now();let raf;
+    const loop=()=>{wan.getByteFrequencyData(buf);ctx.clearRect(0,0,220,60);for(let k=0;k<22;k++){const v=buf[k+2]/255;const h=Math.max(4,v*56);ctx.fillStyle="#ff6b6b";ctx.globalAlpha=.4+v*.6;ctx.fillRect(k*10,30-h/2,6,h)}
+      const el=(Date.now()-t0)/1000;tm.textContent=fmt(el)+" / "+fmt(MAX_REC);if(el>=MAX_REC){active&&active.stop();return}raf=requestAnimationFrame(loop)};
+    mic.classList.add("rec");mic.querySelector(".dot").innerHTML=STOP;ml.textContent="Tap to stop";wave.classList.remove("hidden");tm.classList.remove("hidden");cw.innerHTML="";ta.classList.add("live");
+    active={id,running:true,stop(){if(!this.running)return;this.running=false;cancelAnimationFrame(raf);try{rec&&rec.stop()}catch(e){}try{mr.state!=="inactive"&&mr.stop()}catch(e){}
+      stream.getTracks().forEach(t=>t.stop());ac.close&&ac.close();mic.classList.remove("rec");mic.querySelector(".dot").innerHTML=MIC;wave.classList.add("hidden");tm.classList.add("hidden");ta.classList.remove("live");active=null}};
+    mr.onstop=()=>{const blob=new Blob(chunks,{type:mr.mimeType||"audio/webm"});if(blob.size<800){drawClip();return}if(AUD[id])URL.revokeObjectURL(AUD[id].url);AUD[id]={blob,url:URL.createObjectURL(blob),dur:(Date.now()-t0)/1000,lang};drawClip()};
+    mr.start(250);loop();
+  };
+}
+
+/* ================= RENDER ================= */
+const opt=st=>st.opt?`<span class="opt">Optional</span>`:"";
+const hearBtn=st=>QV.has(st.id)?`<button class="hear" id="hear"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>Replay</button>`:"";
+function head(st){return `<div class="kick"><span class="dotled"></span>${esc(SECS[st.sec])}${hearBtn(st)}</div><h2>${st.q}${opt(st)}</h2>${st.help?`<p class="help">${st.help}</p>`:`<div class="gap"></div>`}`}
+function ctxHTML(st){
+  if(st.ctx==="talker"){const k=botKey();const lbl=k==="other"?(A.talker_other||"Other"):APPL[k].label;return `<div class="ctx">${appSVG(k)}<span>Your pick: <b>${esc(lbl)}</b></span></div>`}
+  if(st.ctx==="friend_call"&&A.friend_call)return `<div class="ctx txt"><span>You said: <b>${esc(A.friend_call)}</b></span></div>`;
+  return "";
+}
+const chipsHTML=(id,opts,cur)=>`<div class="chips">${opts.map(o=>`<button class="chip${cur===o?" on":""}" data-v="${esc(o)}"><span class="l"></span>${esc(o)}</button>`).join("")}</div>`;
+const tilesHTML=(id,multi,keys)=>{const cur=A[id];return `<div class="grid">${keys.map(k=>{const on=multi?(cur||[]).includes(k):cur===k;return `<button class="tile${on?" on":""}" data-v="${k}" style="--c:${APPL[k].c}"><span class="l"></span>${appSVG(k,!on)}<span>${APPL[k].label}</span></button>`}).join("")}</div>`};
+const sleeper=()=>`<div class="stagebot"><div class="halo"></div>${appSVG(botKey(),true)}<span class="zz">z</span></div>`;
+
+function render(){
+  const st=S[i],main=$("#main"),old=main.querySelector(".card");
+  if(active)active.stop(); stopAudio(); playQuestion(st); preload(i+1);
+  const build=()=>{
+    let h="";
+    switch(st.t){
+    case "intro":h=`<div class="kick"><span class="dotled"></span>A short research survey by Zack</div><h1>Living in a Talking&nbsp;Home</h1>
+      <div class="vid"><video id="introvid" src="intro.mp4" poster="poster.jpg" controls playsinline preload="metadata"></video></div>
+      <div class="meta"><span>About 8–10 min</span><span>Speak or type</span><span>Completely confidential</span></div>`;break;
+    case "consent":h=`<div class="kick"><span class="dotled"></span>Before you begin${hearBtn(st)}</div><h2 style="margin-bottom:14px">A few honest promises</h2>
+      <ul class="consent"><li>This is my personal research on how people feel about home appliances that talk and behave like humans.</li>
+      <li>Taking part is voluntary. You can stop at any time.</li>
+      <li>Your name and contact details stay confidential and are never shared publicly.</li>
+      <li>Answers may appear in research reports or academic applications only as anonymous summaries or quotes, never with your name.</li>
+      <li>Voice recordings are used only for this research and are never shared publicly. If you use speak-to-type, your browser's speech service turns your speech into text.</li></ul>
+      <button class="agree${A.consent?" on":""}" id="agree"><span class="box"></span><span>I am 18 or older and I agree to take part.</span></button>`;break;
+    case "text":h=head(st)+`<input class="field" id="tx_${st.id}" placeholder="${esc(st.ph||"")}" value="${esc(A[st.id]||"")}" autocomplete="off">`;break;
+    case "choice":h=head(st)+chipsHTML(st.id,st.opts,A[st.id]);break;
+    case "multi":h=head(st)+tilesHTML(st.id,true,Object.keys(APPL));break;
+    case "pick":{const used=A.use_most||[];const ks=Object.keys(APPL).filter(k=>used.includes(k));
+      h=head(st)+tilesHTML(st.id,false,ks.length?ks:Object.keys(APPL))+`<input class="field ${A.talker==="other"?"":"hidden"}" id="oth" style="margin-top:14px" placeholder="Which appliance?" value="${esc(A.talker_other||"")}">`;break}
+    case "voice":h=head(st)+ctxHTML(st)+voiceBlock(st);break;
+    case "botname":h=sleeper()+head(st)+`<input class="field" id="tx_${st.id}" placeholder="${esc(st.ph)}" value="${esc(A.bot_name||"")}" autocomplete="off" maxlength="24">`;break;
+    case "persona":h=sleeper()+head(st)+chipsHTML("personality",Object.values(PERS),PERS[A.personality]);break;
+    case "wake":h=`<div class="stagebot" id="wakebot"><div class="halo"></div>${appSVG(botKey(),true,true)}<div class="botid">${esc(botName())} · ${esc(noun())}</div><canvas class="burst" id="burst"></canvas></div><div class="chat" id="chat"></div><div class="replies" id="replies"></div>`;break;
+    case "scale":h=head(st)+`<div class="scale">${[1,2,3,4,5].map(n=>`<button class="${A[st.id]==n?"on":""}" data-v="${n}">${n}</button>`).join("")}</div><div class="scale-l"><span>Not at all</span><span>Very much</span></div>`;break;
+    case "done":h=`<div class="thanks" id="thanks"><div class="sending"><i></i><i></i><i></i></div><p class="help">Saving your answers…</p></div>`;break;
+    }
+    const card=document.createElement("div");card.className="card"+(st.t==="wake"?" wakecard":"");card.innerHTML=h;main.innerHTML="";main.appendChild(card);
+    const lamp=$("#lamp");lamp.classList.remove("on");void lamp.offsetWidth;lamp.classList.add("on");
+    wire(st,card);chrome(st);window.scrollTo(0,0);
+  };
+  if(old){old.classList.add("out");setTimeout(build,230)}else build();
+}
+
+function chrome(st){
+  $("#leds").innerHTML=SECS.slice(1).map((_,k)=>`<span class="led ${k+1<st.sec?"done":k+1===st.sec?"now":""}"></span>`).join("");
+  $("#sec").textContent=st.sec?SECS[st.sec]:"";
+  $("#back").style.visibility=(i===0||st.t==="done")?"hidden":"visible";
+  $("#nav").classList.toggle("hidden",(st.t==="wake"&&!st._ready)||st.t==="done");
+  $("#next").classList.toggle("intro",st.t==="intro");
+  $("#nextl").textContent=st.t==="intro"?"Let's begin":st.id==="final_voice"?"Submit my answers":st.t==="wake"?"Continue":"Next";
+  $("#nudge").classList.remove("show");
+  const dock=$("#dock");const show=woke&&i>S.findIndex(s=>s.t==="wake")&&st.t!=="done";
+  dock.classList.toggle("off",!show);
+  if(show){$("#dockbot").innerHTML=appSVG(botKey(),false,true);
+    const line=DOCK[st.id],sy=$("#say");sy.classList.remove("show");clearTimeout(chrome._a);clearTimeout(chrome._b);
+    if(line){chrome._a=setTimeout(()=>{sy.innerHTML=`<b>${esc(botName())}</b>${esc(line)}`;sy.classList.add("show")},900);chrome._b=setTimeout(()=>sy.classList.remove("show"),7000)}
+    $("#dockbot").onclick=()=>{const db=$("#dockbot svg");db&&db.animate([{transform:"scale(1)"},{transform:"scale(1.12) rotate(-4deg)"},{transform:"scale(1)"}],{duration:420,easing:"ease-out"});
+      if(TAPN>=TAPS.length)return;const n=TAPN++;clearTimeout(chrome._b);sy.innerHTML=`<b>${esc(botName())}</b>${esc(TAPS[n])}`;sy.classList.add("show");botClip("tap_"+n).then(()=>{chrome._b=setTimeout(()=>sy.classList.remove("show"),2500)})};
+  }
+}
+
+function wire(st,card){
+  const autoNext=()=>setTimeout(()=>go(1),380);
+  const hb=card.querySelector("#hear");if(hb)hb.onclick=()=>readQuestion(st);
+  if(st.t==="intro"){const v=card.querySelector("video");v&&v.addEventListener("play",stopAudio)}
+  if(st.t==="consent"){const b=card.querySelector("#agree");b.onclick=()=>{A.consent=!A.consent;b.classList.toggle("on",!!A.consent)}}
+  if(st.t==="text"||st.t==="botname"){const t=card.querySelector(".field");t.oninput=()=>{A[st.id]=t.value};t.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();go(1)}}}
+  if(st.t==="choice"||st.t==="persona"){card.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{
+    card.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");
+    if(st.t==="persona")A.personality=Object.keys(PERS).find(k=>PERS[k]===c.dataset.v);else A[st.id]=c.dataset.v;autoNext()})}
+  if(st.t==="multi")card.querySelectorAll(".tile").forEach(c=>c.onclick=()=>{const k=c.dataset.v,a=A[st.id]||(A[st.id]=[]),ix=a.indexOf(k);if(ix>-1)a.splice(ix,1);else a.push(k);c.classList.toggle("on",ix<0);c.querySelector("svg").classList.toggle("asleep",ix>-1)});
+  if(st.t==="pick"){const o=card.querySelector("#oth");o.oninput=()=>{A.talker_other=o.value};
+    card.querySelectorAll(".tile").forEach(c=>c.onclick=()=>{card.querySelectorAll(".tile").forEach(x=>{x.classList.remove("on");x.querySelector("svg").classList.add("asleep")});
+      c.classList.add("on");c.querySelector("svg").classList.remove("asleep");A.talker=c.dataset.v;o.classList.toggle("hidden",A.talker!=="other");if(A.talker==="other")o.focus();else autoNext()})}
+  if(st.t==="scale")card.querySelectorAll(".scale button").forEach(b=>b.onclick=()=>{card.querySelectorAll(".scale button").forEach(x=>x.classList.remove("on"));b.classList.add("on");A[st.id]=+b.dataset.v;autoNext()});
+  if(st.t==="voice")mountVoice(card);
+  if(st.t==="wake")runWake(st,card);
+  if(st.t==="done")submit(card);
+}
+
+/* ================= WAKE-UP SCENE ================= */
+async function runWake(st,card){
+  st._ready=false;chrome(st);const runId=Symbol();runWake.cur=runId;const alive=()=>runWake.cur===runId&&S[i]===st;
+  const chat=card.querySelector("#chat"),rep=card.querySelector("#replies"),svg=card.querySelector("#wakebot svg");
+  const push=(t,me)=>{const d=document.createElement("div");d.className="msg "+(me?"me":"bot");d.innerHTML=me?esc(t):`<span class="who">${esc(botName())}</span>${esc(t)}`;chat.appendChild(d);d.scrollIntoView({block:"nearest",behavior:"smooth"})};
+  const typing=async ms=>{const t=document.createElement("div");t.className="typing";t.innerHTML="<i></i><i></i><i></i>";chat.appendChild(t);await wait(ms);t.remove()};
+  const line=async(key,txt)=>{if(!alive())return;await typing(550);if(!alive())return;push(txt);CHAT.push({from:"bot",text:txt});await botClip(key);await wait(sound?150:Math.min(3500,700+txt.length*40))};
+  const ask=opts=>new Promise(res=>{rep.innerHTML=opts.map((o,k)=>`<button class="chip" style="animation-delay:${k*70}ms" data-k="${k}"><span class="l"></span>${esc(o[0])}</button>`).join("");
+    rep.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{stopAudio();const k=+b.dataset.k;rep.innerHTML="";push(opts[k][0],true);CHAT.push({from:"you",text:opts[k][0]});res(k)})});
+  await wait(600);if(!alive())return;sparkle(card.querySelector("#burst"));svg.classList.remove("asleep");woke=true;await wait(500);
+  const P=A.personality||"calm",K=TASK[botKey()]?botKey():"other",T=TASK[K];
+  await line("greet_"+P,GREET[P]);
+  await line("task_"+K,T[0]);if(!alive())return;const r1=await ask(T[1]);A.chat_task=T[1][r1][0];
+  await line("ack_"+P,ACK[P]);await line(`task_${K}_${r1}`,T[1][r1][1]);
+  await line("feel",FEEL[0]);if(!alive())return;const r2=await ask(FEEL[1]);A.chat_feel=FEEL[1][r2][0];
+  await line("feel_"+r2,FEEL[1][r2][1]);
+  await line("close_"+P,CLOSE[P]);
+  if(!alive())return;st._ready=true;chrome(st);
+}
+function sparkle(cv){
+  if(!cv)return;const r=cv.getBoundingClientRect();cv.width=r.width*2;cv.height=r.height*2;const x=cv.getContext("2d");
+  const acc="#E5484D";
+  const P=[...Array(40)].map(()=>{const a=Math.random()*Math.PI*2,s=2+Math.random()*6;return{x:cv.width/2,y:cv.height/2,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1.5,l:1,r:2+Math.random()*4,c:Math.random()<.25?acc:"#fff"}});
+  const f=()=>{x.clearRect(0,0,cv.width,cv.height);let al=0;for(const p of P){if(p.l<=0)continue;al++;p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.vx*=.985;p.l-=.016;x.globalAlpha=Math.max(0,p.l);x.fillStyle=p.c;x.beginPath();x.arc(p.x,p.y,Math.max(0,p.r*p.l),0,7);x.fill()}if(al)requestAnimationFrame(f)};f();
+}
+
+/* ================= NAV ================= */
+function valid(st){
+  if(!st.req)return true;
+  if(st.t==="consent")return !!A.consent;
+  if(st.t==="voice")return !!((A[st.id]||"").trim()||AUD[st.id]);
+  if(st.t==="pick")return !!A.talker&&(A.talker!=="other"||(A.talker_other||"").trim());
+  if(st.t==="multi")return (A[st.id]||[]).length>0;
+  if(st.t==="persona")return !!A.personality;
+  return A[st.id]!==undefined&&String(A[st.id]).trim()!=="";
+}
+function nudge(m){const n=$("#nudge");n.textContent=m;n.classList.add("show");clearTimeout(nudge._t);nudge._t=setTimeout(()=>n.classList.remove("show"),2600)}
+function go(d){
+  unlockAudio();
+  const st=S[i];
+  if(d>0&&!valid(st)){const b=$("#next");b.classList.remove("shake");void b.offsetWidth;b.classList.add("shake");
+    nudge(st.t==="consent"?"Please tick the box to continue":st.t==="voice"?"Say it or type it, either is fine":"Just this one, then we move on");return}
+  if(d>0&&st.t==="wake"&&!st._ready)return;
+  let ni=i+d;if(d<0&&S[ni]&&S[ni].t==="wake")ni--;
+  if(ni<0||ni>=S.length)return;i=ni;render();
+}
+$("#next").onclick=()=>go(1);$("#back").onclick=()=>go(-1);
+
+/* ================= SUBMIT ================= */
+const toB64=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(String(f.result).split(",")[1]);f.readAsDataURL(b)});
+async function submit(card){
+  const payload={submittedAt:new Date().toISOString(),durationSec:Math.round((Date.now()-startedAt)/1000),userAgent:navigator.userAgent,answers:{...A},botChat:CHAT,audio:[]};
+  for(const [q,a] of Object.entries(AUD))payload.audio.push({question:q,mime:a.blob.type,seconds:Math.round(a.dur),lang:a.lang,base64:await toB64(a.blob)});
+  let ok=true;
+  if(ENDPOINT){try{await fetch(ENDPOINT,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)})}catch(e){ok=false}}
+  else{console.log("[survey] preview mode, nothing sent",{...payload,audio:payload.audio.map(a=>({...a,base64:a.base64.length+" chars"}))});await wait(1200)}
+  const t=card.querySelector("#thanks");
+  if(!ok){t.innerHTML=`<h2>Your answers didn't send</h2><p class="help">Check your internet connection, then try again.</p><button class="next" id="retry" style="margin:0 auto">Try again</button>`;t.querySelector("#retry").onclick=()=>submit(card);return}
+  t.innerHTML=`<div class="stagebot"><div class="halo"></div>${appSVG(woke?botKey():"other",false,true)}<canvas class="burst" id="burst2"></canvas></div><h2>Thank you for being part of my research.</h2><p class="help">Your answers mean a lot.</p><div class="sig">Zack</div>`;
+  sparkle(t.querySelector("#burst2"));playClip("voice/q_thanks.mp3",false);
+}
+
+render();
+</script>
+
+</body>
+</html>
